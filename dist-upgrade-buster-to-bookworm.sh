@@ -16,6 +16,35 @@ debian_version=$(lsb_release -cs)
 #
 restart_pending=0
 
+upgrade() {
+
+            apt-get clean
+            apt-get -y update
+            echo ""
+            echo "Repolist was updated, starting upgrade."
+            echo ""
+            apt-get -y upgrade
+            apt-get -y full-upgrade
+            echo ""
+            echo -e "${RED}Upgrade is done, please restart for changes to take effect.${NC}"
+            echo ""
+            read -rp "Press Enter to return to the menu."
+            touch /forcefsck
+            restart_pending=1
+}
+
+is_pending() {
+
+    while [ "$restart_pending" -eq 1 ]; do
+        echo ""
+        echo -e "${BW}Restart is pending after an upgrade, please reboot before doing another upgrade!${NC}"
+        echo ""
+        echo ""
+        read -rp "Press Enter to return to the menu."
+        display_menu
+    done
+}
+
 display_menu() {
     clear
     echo -e "${BW}====================================${NC}"
@@ -58,23 +87,18 @@ config_fixes() {
 
 update_to_11() {
 
-    echo ""
-    echo -e "${BW}Looking for faulty configs.{NC}"
-    config_fixes
-    
-    while [ "$restart_pending" -eq 1 ]; do
-        echo ""
-        echo -e "${BW}Restart is pending after an upgrade, please reboot before doing another upgrade!${NC}"
-        read
-        echo ""
-        display_menu
-    done
-
     if [ "$debian_version" != "buster" ]; then
         echo -e "Current Debian version is ${RED}$debian_version${NC}, not ${GREEN}buster${NC} (Debian 10). Please use the correct updater."
-        read
+        echo ""
+        read -rp "Press Enter to return to the menu."
         display_menu
     else
+        
+        is_pending
+
+        echo ""
+        echo -e "${BW}Looking for faulty configs.${NC}"
+        config_fixes
 
         echo "Upgrading the OS to the latest current version."
         echo ""
@@ -93,48 +117,37 @@ update_to_11() {
                     sudo sed -i '1i\#This list was created by our custom upgrade script at '"$(date)"'' /etc/apt/sources.list
             fi
 
-
-        # cat > /etc/apt/sources.list <<"EOF"
-        # deb http://security.debian.org/debian-security stable-security/updates main
-        # deb-src http://security.debian.org/debian-security stable-security/updates main
-        # EOF
             echo ""
             echo "sources.list was updated to bullseye."
             echo ""
-            apt-get clean
-            apt-get -y update
-            echo ""
-            echo "Repolist was updated, starting upgrade."
-            echo ""
-            apt-get -y upgrade
-            apt-get -y full-upgrade
-            echo ""
-            echo -e "${RED}Upgrade is done, please restart for changes to take effect.${NC}"
-            echo ""
-            touch /forcefsck
-            restart_pending=1
+
+            upgrade
     fi
 }
 
 update_to_12() {
 
-    echo ""
-    echo -e "${BW}Looking for faulty configs.{NC}"
-    config_fixes
-
     while [ "$restart_pending" -eq 1 ]; do
         echo ""
         echo -e "${BW}Restart is pending after an upgrade, please reboot before doing another upgrade!${NC}"
-        read
         echo ""
+        read -rp "Press Enter to return to the menu."
         display_menu
     done
+
+    
 
     if [ "$debian_version" != "bullseye" ]; then
         echo -e "Current Debian version is ${RED}$debian_version${NC}, not ${GREEN}bullseye${NC} (Debian 11). Please use the ${BW}bullseye${NC} version of the updater."
         read
         display_menu
     else
+
+    echo ""
+    echo -e "${BW}Looking for faulty configs.${NC}"
+    config_fixes
+
+    is_pending
 
         echo "Upgrading the OS to the latest current version."
         echo ""
@@ -154,27 +167,24 @@ update_to_12() {
 
         sed -i 's/bullseye/bookworm/g' /etc/apt/sources.list
 
-        # cat > /etc/apt/sources.list <<"EOF"
-        # deb http://security.debian.org/debian-security stable-security/updates main
-        # deb-src http://security.debian.org/debian-security stable-security/updates main
-        # EOF
-
-        #apt-key adv --keyserver keyserver.ubuntu.com --recv-keys BDE6D2B9216EC7A8
         echo ""
         echo "sources.list was updated to bookworm."
         echo ""
-        apt clean
-        apt -y update
-        echo ""
-        echo "Repolist was updated, starting upgrade"
-        echo ""
-        apt -y upgrade
-        apt -y full-upgrade
-        echo ""
-        echo -e "${RED}Upgrade is done, please restart for changes to take effect.${NC}"
-        echo ""
-        touch /forcefsck
-        restart_pending=1
+
+        upgrade
+#        apt clean
+#        apt -y update
+#        echo ""
+#        echo "Repolist was updated, starting upgrade"
+#        echo ""
+#        apt -y upgrade
+#        apt -y full-upgrade
+#        echo ""
+#        echo -e "${RED}Upgrade is done, please restart for changes to take effect.${NC}"
+#        echo ""
+#        read -rp "Press Enter to return to the menu."
+#        touch /forcefsck
+#        restart_pending=1
     fi
 }
 
@@ -199,6 +209,8 @@ libcrypt_fix(){
     apt-get -y full-upgrade
     
     apt-get -y auto-remove
+    echo ""
+    read -rp "Press Enter to return to the menu."
 }
 
 reboot_system(){
@@ -228,7 +240,7 @@ while true; do
         0) echo "Exiting..."; break ;;
         *) echo "Invalid choice. Please enter a number between 0 and 4." ;;
     esac
-    if [[ $choice != 0 ]]; then
-        read -rp "Press Enter to return to the menu."
-    fi
+#    if [[ $choice != 0 ]]; then
+#        read -rp "Press Enter to return to the menu."
+#    fi
 done
